@@ -1,0 +1,254 @@
+{
+  "naive_bayes_accuracy": 0.875,
+  "classes": [
+    "Computer Vision",
+    "Cybersecurity",
+    "Databases",
+    "Healthcare AI",
+    "Information Retrieval",
+    "Software Engineering"
+  ],
+  "confusion": [
+    [
+      5,
+      0,
+      0,
+      1,
+      0,
+      0
+    ],
+    [
+      0,
+      7,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      7,
+      0,
+      0,
+      0
+    ],
+    [
+      1,
+      1,
+      0,
+      5,
+      0,
+      0
+    ],
+    [
+      0,
+      1,
+      0,
+      0,
+      6,
+      0
+    ],
+    [
+      0,
+      1,
+      0,
+      0,
+      0,
+      5
+    ]
+  ],
+  "misclassified": [
+    {
+      "doc": "D03",
+      "title": "FedDermaSeg: Federated Learning for Dermatological Image Segmentation",
+      "true": "Healthcare AI",
+      "pred": "Computer Vision"
+    },
+    {
+      "doc": "D05",
+      "title": "Evolving LLM-Generated Features for Interpretable Classification",
+      "true": "Healthcare AI",
+      "pred": "Cybersecurity"
+    },
+    {
+      "doc": "D21",
+      "title": "Trustworthy Domain-Specific AI for Structured Knowledge Retrieval and Reasoning",
+      "true": "Information Retrieval",
+      "pred": "Cybersecurity"
+    },
+    {
+      "doc": "D30",
+      "title": "Complexity-Aware Evaluation of LLM Comprehension",
+      "true": "Software Engineering",
+      "pred": "Cybersecurity"
+    },
+    {
+      "doc": "D37",
+      "title": "MOXIE: Discovering Alternative Explanations for Biomedical Image Classifiers",
+      "true": "Computer Vision",
+      "pred": "Healthcare AI"
+    }
+  ],
+  "kmeans_purity": 0.875,
+  "clusters": [
+    {
+      "cluster": 0,
+      "size": 9,
+      "categories": {
+        "Information Retrieval": 7,
+        "Databases": 2
+      },
+      "top_terms": [
+        "retriev",
+        "vector",
+        "queri",
+        "quantiz",
+        "item",
+        "page",
+        "document",
+        "embed"
+      ],
+      "docs": [
+        "D15",
+        "D16",
+        "D17",
+        "D18",
+        "D19",
+        "D20",
+        "D21",
+        "D25",
+        "D26"
+      ]
+    },
+    {
+      "cluster": 1,
+      "size": 5,
+      "categories": {
+        "Healthcare AI": 5
+      },
+      "top_terms": [
+        "clinic",
+        "medic",
+        "featur",
+        "rubric",
+        "model",
+        "concept",
+        "imag",
+        "llm"
+      ],
+      "docs": [
+        "D01",
+        "D02",
+        "D05",
+        "D06",
+        "D07"
+      ]
+    },
+    {
+      "cluster": 2,
+      "size": 7,
+      "categories": {
+        "Healthcare AI": 1,
+        "Computer Vision": 6
+      },
+      "top_terms": [
+        "segment",
+        "imag",
+        "medic",
+        "train",
+        "explan",
+        "site",
+        "domain",
+        "3d"
+      ],
+      "docs": [
+        "D03",
+        "D35",
+        "D36",
+        "D37",
+        "D38",
+        "D39",
+        "D40"
+      ]
+    },
+    {
+      "cluster": 3,
+      "size": 6,
+      "categories": {
+        "Healthcare AI": 1,
+        "Databases": 5
+      },
+      "top_terms": [
+        "databas",
+        "queri",
+        "optim",
+        "calibr",
+        "prompt",
+        "quantum",
+        "data",
+        "cvm"
+      ],
+      "docs": [
+        "D04",
+        "D22",
+        "D23",
+        "D24",
+        "D27",
+        "D28"
+      ]
+    },
+    {
+      "cluster": 4,
+      "size": 5,
+      "categories": {
+        "Software Engineering": 5
+      },
+      "top_terms": [
+        "review",
+        "code",
+        "pr",
+        "file",
+        "commit",
+        "ai",
+        "softwar",
+        "develop"
+      ],
+      "docs": [
+        "D29",
+        "D31",
+        "D32",
+        "D33",
+        "D34"
+      ]
+    },
+    {
+      "cluster": 5,
+      "size": 8,
+      "categories": {
+        "Cybersecurity": 7,
+        "Software Engineering": 1
+      },
+      "top_terms": [
+        "detect",
+        "iot",
+        "id",
+        "intrus",
+        "traffic",
+        "model",
+        "network",
+        "featur"
+      ],
+      "docs": [
+        "D08",
+        "D09",
+        "D10",
+        "D11",
+        "D12",
+        "D13",
+        "D14",
+        "D30"
+      ]
+    }
+  ]
+}
