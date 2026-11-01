@@ -1,0 +1,63 @@
+{
+  "filtering": {
+    "profiles": 30,
+    "stream": 2000,
+    "rows": [
+      {
+        "threshold": 0.05,
+        "precision": 0.16090630417262577,
+        "recall": 0.8370973117296647,
+        "f1": 0.23448018025601672
+      },
+      {
+        "threshold": 0.1,
+        "precision": 0.3315408445977118,
+        "recall": 0.7376978087272205,
+        "f1": 0.4058909915455127
+      },
+      {
+        "threshold": 0.15,
+        "precision": 0.4896202299450925,
+        "recall": 0.619448914375385,
+        "f1": 0.49808270804105376
+      },
+      {
+        "threshold": 0.2,
+        "precision": 0.5732798220298221,
+        "recall": 0.5002276699335523,
+        "f1": 0.47864627683060673
+      },
+      {
+        "threshold": 0.3,
+        "precision": 0.5174855699855699,
+        "recall": 0.2433963258963259,
+        "f1": 0.2985838384381257
+      }
+    ]
+  },
+  "browsing": {
+    "rows": [
+      {
+        "name": "Flat browsing (read the list in order)",
+        "items": 801.0,
+        "minutes": 445.74828662109377
+      },
+      {
+        "name": "Structured guided browsing",
+        "items": 25.0,
+        "minutes": 13.91224365234375
+      },
+      {
+        "name": "Search with BM25 (200 of 200 queries found a match)",
+        "items": 1.0,
+        "minutes": 0.55648974609375
+      },
+      {
+        "name": "Hypertext links, best path, 10,005 dialogues",
+        "items": 37.32633683158421,
+        "minutes": 20.771723706018086
+      }
+    ],
+    "note": "Guided browsing assumes the user picks the right menu entries. Hypertext is the shortest path, about 5 clicks with 7 links per page, so it is a best case."
+  }
+}

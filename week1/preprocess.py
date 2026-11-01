@@ -1,7 +1,7 @@
 """Week 1 — Text operations (slide 11): tokenization, stop-word removal, stemming."""
 import re
 
-from nltk.stem import PorterStemmer
+from week1.porter import stem_word
 
 STOPWORDS = frozenset("""
 a about above after again against all also am an and any are as at be because been before being below
@@ -14,8 +14,8 @@ when where whether which while who whom why will with within without would yet y
 yourselves al one two three use used using also e g ie eg
 """.split())
 
-_stemmer = PorterStemmer()
 _TOKEN = re.compile(r"[a-z0-9]+")
+_stems = {}   # word -> stem: most words repeat, so each is only stemmed once
 
 
 def tokenize(text):
@@ -28,7 +28,13 @@ def remove_stopwords(tokens):
 
 
 def stem(tokens):
-    return [_stemmer.stem(t) for t in tokens]
+    out = []
+    for t in tokens:
+        s = _stems.get(t)
+        if s is None:
+            s = _stems[t] = stem_word(t)
+        out.append(s)
+    return out
 
 
 def preprocess(text):

@@ -1,0 +1,12 @@
+{
+  "k1": 0.5,
+  "b": 0.75,
+  "lam": 0.3,
+  "weights": {
+    "narrative": 1.0,
+    "opening": 0.0,
+    "body": 0.0,
+    "closing": 0.0
+  },
+  "k": 800
+}

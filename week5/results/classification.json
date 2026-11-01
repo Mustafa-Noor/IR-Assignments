@@ -94,6 +94,30 @@
   "clusters": [
     {
       "cluster": 0,
+      "size": 5,
+      "categories": {
+        "Databases": 5
+      },
+      "top_terms": [
+        "databas",
+        "queri",
+        "optim",
+        "prompt",
+        "quantum",
+        "cvm",
+        "rewrit",
+        "sql"
+      ],
+      "docs": [
+        "D22",
+        "D23",
+        "D24",
+        "D27",
+        "D28"
+      ]
+    },
+    {
+      "cluster": 1,
       "size": 9,
       "categories": {
         "Information Retrieval": 7,
@@ -122,84 +146,7 @@
       ]
     },
     {
-      "cluster": 1,
-      "size": 5,
-      "categories": {
-        "Healthcare AI": 5
-      },
-      "top_terms": [
-        "clinic",
-        "medic",
-        "featur",
-        "rubric",
-        "model",
-        "concept",
-        "imag",
-        "llm"
-      ],
-      "docs": [
-        "D01",
-        "D02",
-        "D05",
-        "D06",
-        "D07"
-      ]
-    },
-    {
       "cluster": 2,
-      "size": 7,
-      "categories": {
-        "Healthcare AI": 1,
-        "Computer Vision": 6
-      },
-      "top_terms": [
-        "segment",
-        "imag",
-        "medic",
-        "train",
-        "explan",
-        "site",
-        "domain",
-        "3d"
-      ],
-      "docs": [
-        "D03",
-        "D35",
-        "D36",
-        "D37",
-        "D38",
-        "D39",
-        "D40"
-      ]
-    },
-    {
-      "cluster": 3,
-      "size": 6,
-      "categories": {
-        "Healthcare AI": 1,
-        "Databases": 5
-      },
-      "top_terms": [
-        "databas",
-        "queri",
-        "optim",
-        "calibr",
-        "prompt",
-        "quantum",
-        "data",
-        "cvm"
-      ],
-      "docs": [
-        "D04",
-        "D22",
-        "D23",
-        "D24",
-        "D27",
-        "D28"
-      ]
-    },
-    {
-      "cluster": 4,
       "size": 5,
       "categories": {
         "Software Engineering": 5
@@ -223,11 +170,64 @@
       ]
     },
     {
-      "cluster": 5,
+      "cluster": 3,
       "size": 8,
       "categories": {
-        "Cybersecurity": 7,
+        "Healthcare AI": 2,
+        "Computer Vision": 6
+      },
+      "top_terms": [
+        "segment",
+        "imag",
+        "train",
+        "medic",
+        "explan",
+        "site",
+        "domain",
+        "skin"
+      ],
+      "docs": [
+        "D03",
+        "D04",
+        "D35",
+        "D36",
+        "D37",
+        "D38",
+        "D39",
+        "D40"
+      ]
+    },
+    {
+      "cluster": 4,
+      "size": 6,
+      "categories": {
+        "Healthcare AI": 5,
         "Software Engineering": 1
+      },
+      "top_terms": [
+        "clinic",
+        "model",
+        "medic",
+        "llm",
+        "featur",
+        "rubric",
+        "complex",
+        "concept"
+      ],
+      "docs": [
+        "D01",
+        "D02",
+        "D05",
+        "D06",
+        "D07",
+        "D30"
+      ]
+    },
+    {
+      "cluster": 5,
+      "size": 7,
+      "categories": {
+        "Cybersecurity": 7
       },
       "top_terms": [
         "detect",
@@ -235,9 +235,9 @@
         "id",
         "intrus",
         "traffic",
-        "model",
         "network",
-        "featur"
+        "featur",
+        "attack"
       ],
       "docs": [
         "D08",
@@ -246,8 +246,7 @@
         "D11",
         "D12",
         "D13",
-        "D14",
-        "D30"
+        "D14"
       ]
     }
   ]

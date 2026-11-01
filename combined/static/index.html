@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IR Model Lab</title>
+<link rel="stylesheet" href="/static/vendor/katex.min.css">
+<script defer src="/static/vendor/katex.min.js"></script>
+<style>
+  /* Qadam palette: #031716 #032F30 #0A7075 #0C969C #6BA3BE #274D60 */
+  @font-face { font-family: "Atkinson Hyperlegible"; font-weight: 400; font-display: swap; src: url("/static/vendor/atkinson-400.woff2") format("woff2"); }
+  @font-face { font-family: "Atkinson Hyperlegible"; font-weight: 700; font-display: swap; src: url("/static/vendor/atkinson-700.woff2") format("woff2"); }
+  :root {
+    color-scheme: light;
+    --p-abyss: #031716; --p-deep: #032F30; --p-teal: #0A7075; --p-bright: #0C969C; --p-sky: #6BA3BE; --p-slate: #274D60;
+    --bg: #EDF4F5; --surface: #FFFFFF; --surface-2: #F5FAFA; --ink: #031716; --muted: #3B5F6F; --line: #D2E2E6;
+    --accent: #0A7075; --accent-hover: #087F85; --accent-text: #0A7075; --soft: #E0EFF0; --soft-sky: #E4EEF3;
+    --focus: #0C969C; --mark: rgba(12, 150, 156, .22); --input-bg: #FFFFFF; --good: #0A6B3B; --bad: #B3261E;
+    --shadow: 0 1px 2px rgba(3, 23, 22, .06), 0 4px 12px rgba(3, 47, 48, .06);
+    --shadow-hover: 0 2px 4px rgba(3, 23, 22, .08), 0 12px 28px rgba(3, 47, 48, .12);
+    --radius: 14px;
+    --s1: #0C969C; --s2: #E8743B; --s3: #274D60; --s4: #E0A100; --s5: #D9689A; --s6: #6250D6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #031716; --surface: #062A2B; --surface-2: #032F30; --ink: #E3F0F1; --muted: #9DC2D2; --line: #164345;
+      --accent: #0A7075; --accent-hover: #0C969C; --accent-text: #6BA3BE; --soft: rgba(12, 150, 156, .16);
+      --soft-sky: rgba(107, 163, 190, .16); --mark: rgba(12, 150, 156, .38); --input-bg: #032F30; --good: #5FD09A; --bad: #FF9C93;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 12px rgba(0, 0, 0, .25);
+      --shadow-hover: 0 2px 4px rgba(0, 0, 0, .35), 0 12px 28px rgba(0, 0, 0, .4);
+      --s3: #6BA3BE; --s4: #D69A00; --s6: #9085E9;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #031716; --surface: #062A2B; --surface-2: #032F30; --ink: #E3F0F1; --muted: #9DC2D2; --line: #164345;
+    --accent: #0A7075; --accent-hover: #0C969C; --accent-text: #6BA3BE; --soft: rgba(12, 150, 156, .16);
+    --soft-sky: rgba(107, 163, 190, .16); --mark: rgba(12, 150, 156, .38); --input-bg: #032F30; --good: #5FD09A; --bad: #FF9C93;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 12px rgba(0, 0, 0, .25);
+    --shadow-hover: 0 2px 4px rgba(0, 0, 0, .35), 0 12px 28px rgba(0, 0, 0, .4);
+    --s3: #6BA3BE; --s4: #D69A00; --s6: #9085E9;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Atkinson Hyperlegible", system-ui, sans-serif; font-size: 16px; line-height: 1.55; color: var(--ink); background: var(--bg); }
+  h2 { font-size: 1.15rem; margin: 0 0 6px; }
+  h3 { font-size: 1rem; margin: 0 0 6px; }
+  p { margin: 0 0 10px; }
+  ::selection { background: var(--p-bright); color: #fff; }
+  button, select, input { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 8px 12px; text-align: left; transition: border-color .18s, background-color .18s, box-shadow .18s, transform .18s, color .18s; }
+  button:hover { border-color: var(--p-bright); }
+  button:disabled { opacity: .4; cursor: default; border-color: var(--line); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; padding: 12px 24px; box-shadow: 0 4px 14px rgba(12, 150, 156, .35); }
+  button.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); transform: translateY(-1px); }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  select { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--input-bg); cursor: pointer; max-width: 100%; }
+  select option { color: var(--p-abyss); background: #fff; }
+
+  /* Header: deep-teal gradient band */
+  header { position: relative; z-index: 1; padding: 22px 24px 0; color: #E3F0F1;
+    background: radial-gradient(900px 260px at 85% -40%, rgba(12, 150, 156, .45), transparent 70%),
+      radial-gradient(600px 220px at 0% 120%, rgba(107, 163, 190, .22), transparent 70%),
+      linear-gradient(120deg, var(--p-abyss) 0%, var(--p-deep) 55%, #074F52 100%);
+    border-bottom: 1px solid rgba(107, 163, 190, .25); }
+  header::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, var(--p-teal), var(--p-bright), var(--p-sky), var(--p-slate)); }
+  .top-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .brand-mark { width: 44px; height: 44px; border-radius: 12px; flex: none; background: linear-gradient(135deg, var(--p-bright), var(--p-sky)); color: var(--p-abyss); display: grid; place-items: center; box-shadow: 0 6px 18px rgba(12, 150, 156, .45); }
+  .brand h1 { margin: 0; font-size: 1.35rem; line-height: 1.2; color: #fff; letter-spacing: .01em; }
+  .brand p { margin: 0; font-size: 14px; color: var(--p-sky); }
+  .nav-row { display: flex; gap: 8px; align-items: center; }
+  .nav-row button { padding: 6px 14px; font-size: 15px; color: #E3F0F1; background: rgba(255, 255, 255, .06); border-color: rgba(107, 163, 190, .35); }
+  .nav-row button:hover:not(:disabled) { background: rgba(12, 150, 156, .25); border-color: var(--p-bright); }
+  .nav-row button:disabled { opacity: .35; border-color: rgba(107, 163, 190, .25); }
+  .search-form { display: flex; gap: 10px; max-width: 840px; }
+  .search-form input { flex: 1; padding: 13px 14px 13px 44px; border: 1px solid transparent; border-radius: 12px; color: var(--p-abyss); min-width: 0;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%230A7075' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 15px center;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .25); transition: border-color .18s, box-shadow .18s; }
+  .search-form input::placeholder { color: #5E7F8C; }
+  .search-form input:focus { outline: none; border-color: var(--p-bright); box-shadow: 0 0 0 4px rgba(12, 150, 156, .35), 0 6px 20px rgba(0, 0, 0, .25); }
+  header button.primary { background: var(--p-bright); border-color: var(--p-bright); color: var(--p-abyss); }
+  header button.primary:hover { background: #10AAB0; border-color: #10AAB0; }
+  .filters { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-top: 14px; }
+  .filters label { display: flex; gap: 8px; align-items: center; color: #B9D4DF; font-size: 15px; }
+  .filters label[hidden] { display: none; }
+  header select { color: #fff; background: rgba(255, 255, 255, .08); border-color: rgba(107, 163, 190, .4); }
+  header select:hover { border-color: var(--p-bright); background: rgba(12, 150, 156, .2); }
+  .hint { font-size: 14px; color: #9DC2D2; margin: 10px 0 0; max-width: 80ch; }
+  #tabs { display: flex; gap: 4px; margin-top: 14px; overflow-x: auto; padding-bottom: 3px; }
+  #tabs button { border: 0; border-radius: 10px 10px 0 0; background: none; color: #B9D4DF; padding: 8px 16px; white-space: nowrap; }
+  #tabs button:hover { background: rgba(12, 150, 156, .25); color: #fff; }
+  #tabs button[aria-selected="true"] { background: var(--bg); color: var(--ink); font-weight: 700; }
+
+  main { max-width: 1400px; margin: 0 auto; padding: 20px 24px 48px; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .controls { margin-bottom: 14px; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--p-bright); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px; margin-bottom: 18px; }
+  .results h2, aside h2, .preview > h2 { display: flex; align-items: center; gap: 8px; font-size: 12.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 12px; }
+  .results h2::before, aside h2::before, .preview > h2::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--p-bright); }
+  aside h2::before { background: var(--p-slate); }
+  .results h2::before { background: var(--p-teal); }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 18px; margin-bottom: 18px; }
+  .grid2 > .panel { margin-bottom: 0; min-width: 0; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 18px; }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 16px; }
+  .panel .tile { background: var(--surface-2); box-shadow: none; }
+  .tile b { display: block; font-size: 1.35rem; line-height: 1.25; color: var(--accent-text); }
+  .tile span { color: var(--muted); font-size: 13px; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 700; white-space: nowrap; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr:hover { background: var(--surface-2); }
+  tr.best td { font-weight: 700; background: var(--soft); }
+  th button { all: unset; cursor: pointer; }
+  th button:hover { color: var(--ink); }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); margin: 6px 0; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; }
+  svg text { fill: var(--muted); font-size: 11.5px; font-family: inherit; }
+  svg .label { fill: var(--ink); }
+  svg .axis { stroke: var(--line); }
+  svg .gridline { stroke: var(--line); }
+  svg [data-tip] { cursor: default; }
+  .tip { position: fixed; pointer-events: none; z-index: 20; background: var(--surface); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow-hover); border-radius: 8px; padding: 6px 10px; font-size: 13px; max-width: 280px; }
+
+  /* Results */
+  .models { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px; }
+  .model { background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--p-bright); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; min-width: 0; }
+  .model > h3 { display: flex; justify-content: space-between; gap: 8px; }
+  .family { font-size: 12.5px; font-weight: 400; color: var(--muted); white-space: nowrap; }
+  .family i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
+  .status { display: inline-block; color: var(--muted); font-size: 14px; margin: 0 0 14px; }
+  .status:not(:empty) { background: var(--soft-sky); padding: 2px 12px; border-radius: 999px; }
+  .result-list { list-style: none; padding: 0; margin: 0; }
+  .result-list li + li { margin-top: 12px; }
+  .result { position: relative; overflow: hidden; width: 100%; display: block; padding: 14px 16px; border-radius: var(--radius); box-shadow: var(--shadow); }
+  .result::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(180deg, var(--p-bright), var(--p-sky)); opacity: 0; transition: opacity .18s; }
+  .result:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); border-color: var(--p-bright); }
+  .result:hover::before { opacity: .6; }
+  .result.active { border-color: var(--p-bright); box-shadow: var(--shadow-hover); background: var(--surface-2); }
+  .result.active::before { opacity: 1; }
+  .result-title { display: block; font-weight: 700; }
+  .result.active .result-title { color: var(--accent-text); }
+  .tag { display: inline-block; font-size: 12.5px; font-weight: 700; letter-spacing: .02em; border-radius: 999px; padding: 1px 10px; margin: 6px 6px 0 0; background: var(--soft); color: var(--accent-text); }
+  .tag.ok { background: transparent; color: var(--good); box-shadow: inset 0 0 0 1px var(--good); }
+  .snippet { display: block; margin-top: 6px; color: var(--muted); font-size: 14.5px; }
+  .model .result { padding: 10px 12px; box-shadow: none; }
+  .model .result-list li + li { margin-top: 8px; }
+  .model .snippet { font-size: 13.5px; }
+  mark { background: var(--mark); color: inherit; padding: 0 3px; border-radius: 4px; }
+  .empty { color: var(--muted); padding: 28px 16px; text-align: center; border: 1.5px dashed var(--p-sky); border-radius: var(--radius); background: var(--soft-sky); list-style: none; }
+
+  /* Flow */
+  .flow-step { position: relative; padding: 0 0 14px 36px; }
+  .flow-step:not(:last-child)::before { content: ""; position: absolute; left: 12px; top: 28px; bottom: 0; width: 2px; background: linear-gradient(180deg, var(--p-bright), var(--p-sky)); opacity: .5; }
+  .flow-num { position: absolute; left: 0; top: 0; width: 26px; height: 26px; border-radius: 50%; background: var(--p-teal); color: #fff; font-size: 13px; font-weight: 700; display: grid; place-items: center; }
+  .flow-step[hidden] { display: none; }
+  .formula { overflow-x: auto; padding: 4px 0; }
+
+  /* Browse: Qadam's three columns */
+  .crumbs { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 0; margin: 0 0 16px; font-size: 15px; }
+  .crumbs li + li::before { content: "\203A"; color: var(--p-sky); margin: 0 6px; font-weight: 700; }
+  .crumbs button { border: 0; padding: 2px 8px; background: none; color: var(--accent-text); border-radius: 6px; font-weight: 700; }
+  .crumbs button:hover { background: var(--soft); }
+  .crumbs [aria-current="page"] { color: var(--muted); }
+  .layout { display: grid; grid-template-columns: 280px minmax(0, 1fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+  aside, .preview { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
+  aside { border-top: 4px solid var(--p-slate); }
+  .preview { border-top: 4px solid var(--p-bright); }
+  .results { padding-top: 6px; min-width: 0; }
+  .cat-list, .sub-list { list-style: none; padding: 0; margin: 0; }
+  .cat-list > li + li, .sub-list > li + li { margin-top: 2px; }
+  .cat-list button, .sub-list button { width: 100%; border: 0; background: none; padding: 8px 10px; border-radius: 9px; }
+  .sub-list button { font-size: 14px; }
+  .cat-list button:hover, .sub-list button:hover { background: var(--soft); }
+  .cat-list button[aria-current="true"], .sub-list button[aria-current="true"] { background: var(--soft); font-weight: 700; color: var(--accent-text); box-shadow: inset 3px 0 0 var(--p-bright); }
+  .sub-list { padding-left: 10px; margin: 2px 0 4px 12px; border-left: 2px solid var(--soft-sky); }
+  .count { color: var(--muted); font-size: 12.5px; float: right; font-weight: 700; background: var(--soft-sky); border-radius: 999px; padding: 0 9px; margin-top: 2px; }
+  button[aria-current="true"] > .count { background: var(--p-teal); color: #fff; }
+  #preview > h3.title { font-size: 1.3rem; line-height: 1.3; }
+  #preview h4 { display: flex; align-items: center; gap: 10px; font-size: 1rem; padding-top: 14px; border-top: 1px solid var(--line); margin: 16px 0 6px; }
+  #preview h4::before { content: ""; width: 4px; height: 18px; border-radius: 2px; background: linear-gradient(180deg, var(--p-bright), var(--p-sky)); }
+  .note-pill { display: inline-block; background: var(--soft-sky); color: var(--muted); border: 1px solid rgba(107, 163, 190, .5); border-radius: 999px; padding: 1px 12px; font-size: 13px; margin: 0 0 8px; }
+  blockquote { position: relative; margin: 0 0 12px; padding: 12px 16px 12px 44px; background: linear-gradient(135deg, var(--soft), var(--soft-sky)); border-radius: 12px; font-style: italic; }
+  blockquote::before { content: "\201C"; position: absolute; left: 14px; top: 2px; font: 700 2.4rem/1 Georgia, serif; color: var(--p-bright); font-style: normal; }
+  .turn { margin: 0 0 6px; }
+  .related { list-style: none; padding: 0; margin: 0; }
+  .related li + li { margin-top: 6px; }
+  .related button { width: 100%; }
+  .related button:hover { background: var(--soft); }
+  .related button::after { content: "\2192"; float: right; color: var(--p-bright); font-weight: 700; transition: transform .18s; }
+  .related button:hover::after { transform: translateX(3px); }
+  pre { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px; font: 13px/1.45 Consolas, Menlo, monospace; overflow-x: auto; margin: 0 0 14px; }
+  .error { color: var(--bad); font-size: 14.5px; }
+  .loading { opacity: .55; }
+  aside::-webkit-scrollbar, .preview::-webkit-scrollbar { width: 8px; }
+  aside::-webkit-scrollbar-thumb, .preview::-webkit-scrollbar-thumb { background: var(--p-sky); border-radius: 4px; }
+  @media (max-width: 1080px) {
+    .layout { grid-template-columns: 1fr; gap: 16px; }
+    aside, .preview { position: static; max-height: none; }
+  }
+  @media (max-width: 960px) { header { padding: 16px 16px 0; } main { padding: 16px 16px 32px; } }
+  @media (max-width: 520px) { .search-form button.primary { padding: 12px 14px; } }
+  @media (prefers-reduced-motion: no-preference) { .reveal { animation: rise .25s ease-out; } @keyframes rise { from { opacity: 0; transform: translateY(4px); } } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } .result:hover, button.primary:hover { transform: none; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="top-row">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </div>
+      <div><h1>IR Model Lab</h1><p id="status">Loading the collection…</p></div>
+    </div>
+    <div class="nav-row">
+      <button id="back" type="button" aria-label="Go back" disabled>&larr; Back</button>
+      <button id="forward" type="button" aria-label="Go forward" disabled>Forward &rarr;</button>
+    </div>
+  </div>
+  <form id="search-form" class="search-form" role="search">
+    <input id="q" type="search" list="samples" aria-label="Search the dialogues" placeholder="Search the dialogues" autocomplete="off">
+    <datalist id="samples"></datalist>
+    <button class="primary" type="submit">Search</button>
+  </form>
+  <div class="filters">
+    <label id="f-model">Model <select id="model"></select></label>
+    <label id="f-track">Text <select id="track"><option value="all">Dialogue + narrative</option><option value="dialogue">Dialogue only (harder)</option></select></label>
+    <label id="f-size">Collection <select id="size"></select></label>
+  </div>
+  <p class="hint" id="hint"></p>
+  <nav role="tablist" id="tabs" aria-label="Pages"></nav>
+</header>
+<main id="main"></main>
+<div class="tip" id="tip" hidden></div>
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const num = (v) => (v === "" || v == null ? null : +v);
+const fmt = (v, d = 3) => (num(v) == null ? "—" : (+v).toFixed(d));
+const api = async (url) => {
+  const r = await fetch(url);
+  const data = await r.json().catch(() => ({ error: `Server error ${r.status}` }));
+  if (!r.ok) throw new Error(data.error || `Server error ${r.status}`);
+  return data;
+};
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+let META = null;
+const familyColor = (f) => `var(--s${META.families.indexOf(f) + 1})`;
+const modelFamily = (n) => META.models.find((m) => m.name === n)?.family;
+const TABS = [["compare", "Compare"], ["search", "Search"], ["flow", "Model flow"], ["browse", "Browse"], ["tuning", "Tuning"], ["math", "Math & code"]];
+const state = { tab: "compare", query: "", track: store.get("track", "all"), size: null, model: "BM25" };
+
+function renderTabs() {
+  $("#tabs").innerHTML = TABS.map(([id, label]) => `<button type="button" role="tab" data-tab="${id}" aria-selected="${state.tab === id}">${label}</button>`).join("");
+}
+$("#tabs").addEventListener("click", (e) => { const id = e.target.dataset.tab; if (id) open(id); });
+const HINTS = {
+  compare: "Accuracy, precision, recall and F1 for every model on the same queries.",
+  search: "Pick a sample event to see which results count as relevant. Boolean models accept AND, OR, NOT and BUT NOT.",
+  flow: "Each model has its own path from query to results, with the real values from the collection.",
+  browse: "Three ways to explore without a query: a flat list, a guided hierarchy, and links between dialogues.",
+  tuning: "How each model's settings were chosen, using dev queries only.",
+  math: "Each formula next to the function that runs it, read live from the source files.",
+};
+function syncHeader() {
+  const t = state.tab;
+  $("#f-model").hidden = t !== "flow";
+  $("#f-track").hidden = !["compare", "search", "flow"].includes(t);
+  $("#f-size").hidden = !["compare", "tuning"].includes(t);
+  $("#track").value = state.track;
+  $("#model").value = state.model;
+  $("#hint").textContent = HINTS[t];
+}
+function open(tab, remember = true) {
+  state.tab = tab;
+  if (remember) record(tab === "browse" ? here() : { tab, query: state.query });
+  renderTabs(); syncHeader(); PAGES[tab]();
+}
+$("#search-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  state.query = $("#q").value.trim();
+  if (state.tab !== "flow" && state.tab !== "search") { open("search"); return; }
+  record({ tab: state.tab, query: state.query });
+  (state.tab === "flow" ? runFlow : runSearch)();
+});
+$("#track").onchange = (e) => {
+  state.track = e.target.value; store.set("track", state.track);
+  if (state.tab === "compare") compare();
+  else if (state.query) (state.tab === "flow" ? runFlow : runSearch)();
+};
+$("#size").onchange = (e) => { state.size = e.target.value; PAGES[state.tab](); };
+$("#model").onchange = (e) => { state.model = e.target.value; if (state.query) runFlow(); };
+
+const tex = (src) => { try { return katex.renderToString(src, { displayMode: true, throwOnError: false }); } catch { return `<code>${esc(src)}</code>`; } };
+
+// ---------- charts: hand-built SVG, each one backed by the table below it ----------
+function tip(e) {
+  const box = $("#tip"), t = e.target.closest?.("[data-tip]");
+  if (!t) { box.hidden = true; return; }
+  box.textContent = t.dataset.tip; box.hidden = false;
+  const r = t.getBoundingClientRect();
+  const x = e.clientX ?? r.right, y = e.clientY ?? r.top;
+  box.style.left = Math.min(x + 12, innerWidth - box.offsetWidth - 8) + "px";
+  box.style.top = Math.max(y - box.offsetHeight - 10, 8) + "px";
+}
+addEventListener("mousemove", tip);
+addEventListener("focusin", tip);
+
+const legend = () => `<div class="legend">${META.families.map((f) => `<span><i style="background:${familyColor(f)}"></i>${esc(f)}</span>`).join("")}</div>`;
+
+function barPanels(rows, metrics, unbounded = false) {
+  // One row per model; one small-multiple column per metric, all from zero on the same scale.
+  const nameW = 150, gap = 26, rowH = 22;
+  const colW = 170, width = nameW + metrics.length * (colW + gap), height = 30 + rows.length * rowH + 6;
+  let out = `<svg viewBox="0 0 ${width} ${height}" style="min-width:${Math.min(width, 760)}px;width:100%;max-width:${Math.round(width * 1.25)}px" role="img" aria-label="Bars per model for ${metrics.map((m) => m[1]).join(", ")}">`;
+  metrics.forEach(([key, label], c) => {
+    const x0 = nameW + c * (colW + gap);
+    const max = Math.max(...rows.map((r) => num(r[key]) ?? 0), 0.001), top = unbounded ? max : Math.min(1, Math.ceil(max * 10) / 10);
+    out += `<text x="${x0}" y="14" class="label" font-weight="600">${esc(label)}</text>`;
+    out += `<line class="axis" x1="${x0}" x2="${x0}" y1="24" y2="${height - 6}"/>`;
+    rows.forEach((r, i) => {
+      const v = num(r[key]), y = 28 + i * rowH;
+      if (v == null) { out += `<text x="${x0 + 6}" y="${y + 12}">does not rank</text>`; return; }
+      const w = Math.max((v / top) * (colW - 52), 1);
+      const color = r.family === "baseline" ? "var(--p-sky)" : familyColor(r.family);
+      out += `<rect tabindex="0" data-tip="${esc(r.model)}: ${label} ${v.toFixed(3)}" x="${x0}" y="${y + 3}" width="${w}" height="12" rx="4" fill="${color}"/>`;
+      out += `<text x="${x0 + w + 5}" y="${y + 13}">${unbounded ? v.toFixed(1) : v.toFixed(3)}</text>`;
+    });
+  });
+  rows.forEach((r, i) => { out += `<text x="${nameW - 10}" y="${41 + i * rowH}" text-anchor="end" class="label">${esc(r.model)}</text>`; });
+  return out + "</svg>";
+}
+
+function accuracyDots(rows) {
+  const W = 540, left = 150, right = 24, rowH = 20, H = 34 + rows.length * rowH;
+  const vals = rows.map((r) => +r["accuracy@10"]);
+  const lo = Math.min(...vals), hi = Math.max(...vals), pad = (hi - lo || 1e-6) * 0.15;
+  const a = lo - pad, b = hi + pad, X = (v) => left + ((v - a) / (b - a)) * (W - left - right);
+  const base = rows.find((r) => r.family === "baseline");
+  let out = `<svg viewBox="0 0 ${W} ${H}" style="min-width:480px;width:100%;max-width:700px" role="img" aria-label="Accuracy at 10 per model on a zoomed axis">`;
+  for (let i = 0; i <= 3; i++) {
+    const v = a + ((b - a) * i) / 3;
+    out += `<line class="gridline" x1="${X(v)}" x2="${X(v)}" y1="22" y2="${H - 4}"/><text x="${X(v)}" y="14" text-anchor="middle">${v.toFixed(5)}</text>`;
+  }
+  rows.forEach((r, i) => {
+    const y = 34 + i * rowH, v = +r["accuracy@10"];
+    out += `<text x="${left - 10}" y="${y + 4}" text-anchor="end" class="label">${esc(r.model)}</text>`;
+    out += `<circle tabindex="0" data-tip="${esc(r.model)}: accuracy ${v.toFixed(6)}" cx="${X(v)}" cy="${y}" r="5" fill="${r.family === "baseline" ? "var(--muted)" : familyColor(r.family)}" stroke="var(--surface)" stroke-width="2"/>`;
+  });
+  if (base) out += `<line x1="${X(+base["accuracy@10"])}" x2="${X(+base["accuracy@10"])}" y1="22" y2="${H - 4}" stroke="var(--muted)"/>`;
+  return out + "</svg>";
+}
+
+function scatter(rows) {
+  const W = 560, H = 380, L = 46, B = 40, T = 12, R = 16;
+  const pts = rows.filter((r) => r.family !== "baseline");
+  const axisMax = (k) => Math.min(1, Math.ceil(Math.max(...pts.map((r) => +r[k])) * 5 + .1) / 5);
+  const maxX = axisMax("recall@10"), maxY = axisMax("precision@10");
+  const X = (v) => L + (v / maxX) * (W - L - R), Y = (v) => H - B - (v / maxY) * (H - B - T);
+  let out = `<svg viewBox="0 0 ${W} ${H}" style="width:100%" role="img" aria-label="Precision against recall at 10">`;
+  for (let i = 0; i <= 4; i++) {
+    const x = (maxX * i) / 4, y = (maxY * i) / 4;
+    out += `<line class="gridline" x1="${X(x)}" x2="${X(x)}" y1="${T}" y2="${H - B}"/><line class="gridline" x1="${L}" x2="${W - R}" y1="${Y(y)}" y2="${Y(y)}"/>`;
+    out += `<text x="${X(x)}" y="${H - B + 16}" text-anchor="middle">${x.toFixed(2)}</text><text x="${L - 6}" y="${Y(y) + 4}" text-anchor="end">${y.toFixed(2)}</text>`;
+  }
+  out += `<text x="${(L + W - R) / 2}" y="${H - 6}" text-anchor="middle">Recall@10</text><text transform="translate(12 ${(T + H - B) / 2}) rotate(-90)" text-anchor="middle">Precision@10</text>`;
+  const best = (k) => pts.reduce((a, b) => (+a[k] > +b[k] ? a : b));
+  const named = new Set([best("f1@10").model, best("precision@10").model]);
+  pts.forEach((r) => {
+    const x = X(+r["recall@10"]), y = Y(+r["precision@10"]);
+    out += `<circle cx="${x}" cy="${y}" r="13" fill="transparent" tabindex="0" data-tip="${esc(r.model)}: precision ${fmt(r["precision@10"])}, recall ${fmt(r["recall@10"])}"/>`;
+    out += `<circle cx="${x}" cy="${y}" r="5" fill="${familyColor(r.family)}" stroke="var(--surface)" stroke-width="2" pointer-events="none"/>`;
+    if (named.has(r.model)) out += `<text class="label" x="${x - 8}" y="${y - 8}" text-anchor="end">${esc(r.model)}</text>`;
+  });
+  return out + "</svg>";
+}
+
+function ramp(v) { // sequential blue, light to dark
+  const steps = ["#D5ECEE", "#A6D8DB", "#6FBFC3", "#0C969C", "#0A7075", "#074F52", "#032F30"];
+  if (getComputedStyle(document.documentElement).colorScheme === "dark") steps.reverse();
+  return steps[Math.min(steps.length - 1, Math.floor(Math.max(0, Math.min(.999, v)) * steps.length))];
+}
+
+function heatmap(rowNames, colNames, value, tipText, opts = {}) {
+  const cell = opts.cell ?? 20, left = opts.left ?? 150, top = opts.top ?? 16;
+  const W = left + colNames.length * cell + 6, H = top + rowNames.length * cell + 4;
+  let out = `<svg viewBox="0 0 ${W} ${H}" style="min-width:${Math.min(W, 640)}px;width:100%;max-width:${opts.max ?? W * 1.3}px" role="img" aria-label="${esc(opts.label ?? "Heatmap")}">`;
+  colNames.forEach((c, j) => { if (opts.colLabels) out += `<text x="${left + j * cell + cell / 2}" y="${top - 6}" text-anchor="middle">${esc(c)}</text>`; });
+  rowNames.forEach((r, i) => {
+    out += `<text x="${left - 8}" y="${top + i * cell + cell / 2 + 4}" text-anchor="end" class="label">${esc(r)}</text>`;
+    colNames.forEach((c, j) => {
+      const v = value(i, j);
+      out += `<rect tabindex="0" data-tip="${esc(tipText(r, c, v))}" x="${left + j * cell}" y="${top + i * cell}" width="${cell - 2}" height="${cell - 2}" rx="3" fill="${v == null ? "var(--line)" : ramp(v)}"/>`;
+    });
+  });
+  return out + "</svg>";
+}
+
+const COLUMNS = [["accuracy@10", "Acc@10", 5], ["balanced_accuracy@10", "Bal.Acc@10"], ["precision@10", "P@10"], ["recall@10", "R@10"], ["f1@10", "F1@10"],
+  ["R-precision", "R-Prec"], ["MAP", "MAP"], ["nDCG@10", "nDCG@10"], ["recall@1000", "R@1000"], ["gap_recall", "Gap recall"], ["ms", "ms/query", 1]];
+
+function scoreTable(rows, sort) {
+  const bestF1 = Math.max(...rows.map((r) => +r["f1@10"]));
+  const head = COLUMNS.map(([k, l]) => `<th class="num"><button data-sort="${k}" aria-label="Sort by ${l}">${l}${sort === k ? " ↓" : ""}</button></th>`).join("");
+  const body = rows.map((r) => `<tr class="${+r["f1@10"] === bestF1 ? "best" : ""}"><td>${esc(r.model)}</td><td>${esc(r.week || "")}</td><td>${esc(r.family)}</td>${COLUMNS.map(([k, , d]) => `<td class="num">${fmt(r[k], d ?? 3)}</td>`).join("")}</tr>`).join("");
+  return `<div class="scroll"><table><thead><tr><th>Model</th><th>Week</th><th>Family</th>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+const SIZE = (s) => (s === "full" ? "all 1,486,896" : (+s).toLocaleString());
+
+async function compare() {
+  const main = $("#main");
+  main.classList.add("loading");
+  let data;
+  try { data = await api(`/api/results?track=${state.track}&size=${state.size ?? ""}`); }
+  catch (e) { main.classList.remove("loading"); main.innerHTML = `<p class="error">${esc(e.message)}</p>`; return; }
+  state.size = data.size;
+  const sort = state.sort ?? "f1@10";
+  const rows = [...data.summary].sort((a, b) => (num(b[sort]) ?? -1) - (num(a[sort]) ?? -1));
+  const real = rows.filter((r) => r.family !== "baseline");
+  const models = sortedForCharts(real);
+  const best = (k) => real.filter((r) => num(r[k]) != null).reduce((a, b) => (+a[k] > +b[k] ? a : b));
+  const nothing = rows.find((r) => r.family === "baseline");
+  const setRows = real.filter((r) => r.kind !== "ranked");
+  const gap = real.filter((r) => num(r.gap_recall) > 0).sort((a, b) => b.gap_recall - a.gap_recall);
+  const below = rows.filter((r) => r.family !== "baseline" && +r["accuracy@10"] < +nothing["accuracy@10"]).length;
+  const speed = [...real].sort((a, b) => a.ms - b.ms);
+  const heatRows = [...real].sort((a, b) => b["f1@10"] - a["f1@10"]);
+  const cells = {}; data.per_query.forEach((r) => { cells[r.model + "|" + r.query] = +r["f1@10"]; });
+  const c = data.classify;
+  main.classList.remove("loading");
+  main.innerHTML = `
+  <div class="tiles">
+    <div class="tile"><b>${best("f1@10").model}</b><span>Best F1@10: ${fmt(best("f1@10")["f1@10"])}</span></div>
+    <div class="tile"><b>${best("MAP").model}</b><span>Best MAP: ${fmt(best("MAP").MAP)}</span></div>
+    <div class="tile"><b>${best("precision@10").model}</b><span>Best precision@10: ${fmt(best("precision@10")["precision@10"])}</span></div>
+    <div class="tile"><b>${real.length} models</b><span>${SIZE(data.size)} dialogues, ${data.per_query.length ? "same queries for all" : ""}</span></div>
+  </div>
+  <div class="panel"><h2>Precision, recall, F1 and MAP</h2>
+    <p class="muted">Top 10 results per query, averaged. Each column has its own scale from zero. Sorted by F1@10.</p>
+    ${legend()}<div class="scroll">${barPanels(models, [["precision@10", "Precision@10"], ["recall@10", "Recall@10"], ["f1@10", "F1@10"], ["MAP", "MAP"]])}</div></div>
+  <div class="grid2" style="margin-bottom:16px">
+    <div class="panel"><h2>Accuracy barely separates anything</h2>
+      <p class="muted">Accuracy = (TP + TN) / N. The axis is heavily zoomed. The line marks a system that returns nothing, at ${fmt(nothing["accuracy@10"], 6)}: almost every dialogue is correctly not retrieved, so read precision, recall and F1 instead.${below ? ` ${below} models even fall below that line, because wrong results in the top 10 cost more than the few right ones gain.` : ""}</p>
+      <div class="scroll">${accuracyDots(rows)}</div></div>
+    <div class="panel"><h2>Precision against recall</h2>
+      <p class="muted">Up and to the right is better. Hover a point for its model.</p>${legend()}${scatter(real)}</div>
+  </div>
+  <div class="panel"><h2>Every metric</h2><p class="muted">Select a column to sort. This table holds every value in the charts.</p>${scoreTable(rows, sort)}</div>
+  <div class="grid2" style="margin-bottom:16px">
+    <div class="panel"><h2>Finding documents that share no query word</h2>
+      <p class="muted">Share of such relevant dialogues found in the top 1,000. The other ${real.length - gap.length} models score 0 because they only match words. This is the job Week 7's models were built for.</p>
+      <div class="scroll">${barPanels(gap, [["gap_recall", "Gap recall"]])}</div></div>
+    <div class="panel"><h2>Speed</h2><p class="muted">Average time per query in milliseconds.</p>
+      <div class="scroll">${barPanels(speed, [["ms", "ms/query"]], true)}</div></div>
+  </div>
+  ${setRows.length ? `<div class="panel"><h2>Models that return a set</h2><p class="muted">Scored on everything they retrieve, not only the top 10.</p><div class="scroll"><table><thead><tr><th>Model</th><th class="num">Avg retrieved</th><th class="num">Accuracy</th><th class="num">Precision</th><th class="num">Recall</th><th class="num">F1</th></tr></thead><tbody>
+    ${setRows.map((r) => `<tr><td>${esc(r.model)}</td><td class="num">${fmt(r.retrieved, 1)}</td><td class="num">${fmt(r.set_accuracy, 5)}</td><td class="num">${fmt(r.set_precision)}</td><td class="num">${fmt(r.set_recall)}</td><td class="num">${fmt(r.set_f1)}</td></tr>`).join("")}</tbody></table></div></div>` : ""}
+  <div class="panel"><h2>F1@10 query by query</h2><p class="muted">First ${data.queries.length} test queries. Darker is better. Some events are easy for every model and some for none.</p>
+    <div class="scroll">${heatmap(heatRows.map((r) => r.model), data.queries, (i, j) => cells[heatRows[i].model + "|" + data.queries[j]] ?? null, (r, q, v) => `${r}, query ${q}: F1@10 ${v == null ? "—" : v.toFixed(2)}`, { label: "F1 at 10 per model and query" })}</div></div>
+  ${c ? classifySection(c) : ""}
+  ${data.extras ? extrasSection(data.extras) : ""}`;
+  main.querySelectorAll("[data-sort]").forEach((b) => (b.onclick = () => { state.sort = b.dataset.sort; compare(); }));
+}
+const sortedForCharts = (rows) => [...rows].sort((a, b) => b["f1@10"] - a["f1@10"]);
+
+function classifySection(c) {
+  const nb = c.naive_bayes, km = c.kmeans, max = Math.max(...nb.confusion.flat());
+  const rowSum = nb.confusion.map((r) => r.reduce((a, b) => a + b, 0));
+  return `<div class="grid2" style="margin-bottom:16px">
+    <div class="panel"><h2>Naive Bayes on relation</h2>
+      <p class="muted">Trained on SODA's train split, scored on ${nb.documents.toLocaleString()} unseen dialogues. Relation is not a topic, so this task is hard. Always guessing the commonest class scores ${fmt(nb.majority_baseline)}.</p>
+      <div class="tiles"><div class="tile"><b>${fmt(nb.accuracy)}</b><span>Accuracy</span></div><div class="tile"><b>${fmt(nb.precision)}</b><span>Macro precision</span></div><div class="tile"><b>${fmt(nb.recall)}</b><span>Macro recall</span></div><div class="tile"><b>${fmt(nb.f1)}</b><span>Macro F1</span></div></div>
+      <div class="scroll">${heatmap(nb.classes, nb.classes, (i, j) => nb.confusion[i][j] / rowSum[i], (r, p, v) => `True ${r}, predicted ${p}: ${(v * 100).toFixed(1)}% of ${r}`, { cell: 48, left: 70, top: 22, colLabels: true, max: 440, label: "Confusion matrix" })}</div>
+      <p class="muted">Rows are the true relation, columns the prediction. Darker means a larger share of that row.</p></div>
+    <div class="panel"><h2>K-Means clusters</h2>
+      <p class="muted">${km.clusters} clusters from ${km.documents.toLocaleString()} dialogues, using LSI coordinates, compared with relation labels.</p>
+      <div class="tiles"><div class="tile"><b>${fmt(km.purity)}</b><span>Purity</span></div><div class="tile"><b>${fmt(km.precision)}</b><span>Macro precision</span></div><div class="tile"><b>${fmt(km.recall)}</b><span>Macro recall</span></div><div class="tile"><b>${fmt(km.f1)}</b><span>Macro F1</span></div></div></div></div>`;
+}
+
+function extrasSection(x) {
+  const f = x.filtering, b = x.browsing;
+  return `<div class="grid2" style="margin-bottom:16px">
+  ${f ? `<div class="panel"><h2>Filtering</h2><p class="muted">${f.profiles} profiles watching a stream of ${f.stream.toLocaleString()} dialogues.</p><div class="scroll"><table><thead><tr><th>Threshold θ</th><th class="num">Precision</th><th class="num">Recall</th><th class="num">F1</th></tr></thead><tbody>${f.rows.map((r) => `<tr><td>${r.threshold}</td><td class="num">${fmt(r.precision)}</td><td class="num">${fmt(r.recall)}</td><td class="num">${fmt(r.f1)}</td></tr>`).join("")}</tbody></table></div></div>` : ""}
+  ${b ? `<div class="panel"><h2>Browsing against search</h2><p class="muted">Median items a user examines before reaching a relevant dialogue, with reading time at 200 words per minute. ${esc(b.note)}</p><div class="scroll"><table><thead><tr><th>Approach</th><th class="num">Items</th><th class="num">Minutes</th></tr></thead><tbody>${b.rows.map((r) => `<tr><td>${esc(r.name)}</td><td class="num">${(+r.items).toLocaleString()}</td><td class="num">${fmt(r.minutes, 1)}</td></tr>`).join("")}</tbody></table></div></div>` : ""}</div>`;
+}
+
+// ---------- search ----------
+const resultItem = (r) => `<li><button class="result" data-doc="${r.id}"><span class="result-title">${esc(r.event)}</span><span class="tag">${esc(r.relation)}</span>${r.relevant ? '<span class="tag ok">✓ relevant</span>' : ""}<span class="snippet">${r.snippet}</span></button></li>`;
+function bindDocs(el) { el.querySelectorAll("[data-doc]").forEach((b) => (b.onclick = () => openDoc(+b.dataset.doc))); }
+
+async function search() {
+  const main = $("#main");
+  main.innerHTML = `<div id="out"><p class="empty">Type a query above to run it through every model.</p></div>`;
+  if (state.query) runSearch();
+}
+async function runSearch() {
+  const out = $("#out");
+  out.innerHTML = `<p class="muted">Running ${META.models.length} models…</p>`;
+  try {
+    const d = await api(`/api/search?q=${encodeURIComponent(state.query)}&track=${state.track}`);
+    out.innerHTML = `${d.judged ? `<p class="status">This is a test event with ${d.relevant} relevant dialogues.</p>` : `<p class="status">This query is not a test event, so results have no relevance marks.</p>`}
+    <div class="models">${d.models.map((m) => `<section class="model"><h3>${esc(m.model)}<span class="family"><i style="background:${familyColor(m.family)}"></i>${esc(m.family)}</span></h3>
+      ${m.error ? `<p class="error">${esc(m.error)}</p>` : m.results.length ? `<ol class="result-list">${m.results.map(resultItem).join("")}</ol>` : `<p class="muted">Nothing retrieved.</p>`}</section>`).join("")}</div>`;
+    bindDocs(out);
+  } catch (e) { out.innerHTML = `<p class="error">${esc(e.message)}</p>`; }
+}
+
+// ---------- flow ----------
+async function flow() {
+  const main = $("#main");
+  main.innerHTML = `<div id="out"><p class="empty">Choose a model and type a query above to follow it step by step.</p></div>`;
+  if (state.query) runFlow();
+}
+function stepHtml(s, i) {
+  const t = s.table;
+  return `<div class="flow-step reveal" data-step="${i}"><div class="flow-num">${i + 1}</div><h3>${esc(s.title)}</h3>
+    ${s.formula ? `<div class="formula">${tex(s.formula)}</div>` : ""}${s.note ? `<p class="muted">${esc(s.note)}</p>` : ""}
+    ${t ? `<div class="scroll"><table><thead><tr>${t.columns.map((c) => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${t.rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : ""}</div>`;
+}
+async function runFlow() {
+  const out = $("#out");
+  out.innerHTML = `<p class="muted">Running ${esc(state.model)}…</p>`;
+  try {
+    const d = await api(`/api/flow?model=${encodeURIComponent(state.model)}&q=${encodeURIComponent(state.query)}&track=${state.track}`);
+    out.innerHTML = `<div class="panel"><h2>${esc(d.model)}</h2><p>${esc(d.idea)}</p><p class="muted">${esc(d.slides)}</p></div>
+      <div class="row controls"><button id="prev">Previous</button><button id="next">Next step</button><button id="all">Show all</button><span class="muted" id="count"></span></div>
+      <div class="panel">${d.steps.map(stepHtml).join("")}${d.results.length ? `<ol class="result-list">${d.results.map(resultItem).join("")}</ol>` : ""}</div>`;
+    let shown = d.steps.length;
+    const steps = out.querySelectorAll("[data-step]");
+    const list = out.querySelector("ol.result-list");
+    const show = () => {
+      steps.forEach((s, i) => (s.hidden = i >= shown));
+      if (list) list.hidden = shown < steps.length;
+      $("#count").textContent = `Step ${shown} of ${steps.length}`;
+      $("#prev").disabled = shown <= 1; $("#next").disabled = shown >= steps.length;
+    };
+    $("#prev").onclick = () => { shown--; show(); };
+    $("#next").onclick = () => { shown++; show(); };
+    $("#all").onclick = () => { shown = steps.length; show(); };
+    shown = 1; show();
+    bindDocs(out);
+  } catch (e) { out.innerHTML = `<p class="error">${esc(e.message)}</p>`; }
+}
+
+// ---------- browse: Qadam's categories, list and preview ----------
+const RELATIONS = ["xAttr", "xEffect", "xIntent", "xNeed", "xReact", "xWant"];
+const SPLITS = ["train", "valid", "test"];
+const nav = { history: [], at: -1, menu: null, place: { list: { type: "flat", page: 0 }, doc: null } };
+const here = () => nav.place;      // where Browse was last left
+function syncNav() {
+  $("#back").disabled = nav.at <= 0;
+  $("#forward").disabled = nav.at >= nav.history.length - 1;
+}
+function record(entry) {   // every page, browse or open action is recorded; Back and Forward move through it
+  nav.history = nav.history.slice(0, nav.at + 1);
+  nav.history.push(entry);
+  nav.at = nav.history.length - 1;
+  syncNav();
+}
+function go(next) {
+  nav.place = next;
+  record(next);
+  if (state.tab === "browse") draw(next); else open("browse", false);
+}
+function step(delta) {
+  const target = nav.at + delta;
+  if (target < 0 || target >= nav.history.length) return;
+  nav.at = target; syncNav();
+  const entry = nav.history[target];
+  if (entry.tab) {
+    state.query = entry.query;
+    $("#q").value = entry.query;
+    open(entry.tab, false);
+  } else {
+    nav.place = entry;
+    if (state.tab === "browse") draw(entry); else open("browse", false);
+  }
+}
+$("#back").onclick = () => step(-1);
+$("#forward").onclick = () => step(1);
+function openDoc(id) { go({ list: here().list, doc: id, q: state.query }); }
+
+async function browse() {
+  $("#main").innerHTML = `<nav aria-label="Breadcrumb"><ol class="crumbs" id="crumbs"></ol></nav>
+    <div class="layout">
+      <aside aria-label="Categories"><h2>Categories</h2><ul class="cat-list" id="cats"><li class="muted">Loading…</li></ul>
+        <h2 style="margin-top:20px">Recently viewed</h2><div id="recent"></div></aside>
+      <section class="results"><h2 id="list-title">Dialogues</h2><p class="status" id="list-status" role="status"></p><div id="list-filters"></div><ul class="result-list" id="view"></ul><div class="row" id="pager" style="margin-top:12px"></div></section>
+      <section class="preview" aria-label="Preview"><h2>Preview</h2><div id="preview"><p class="empty">Choose a dialogue to see its preview.</p></div></section>
+    </div>`;
+  try {
+    nav.menu = nav.menu ?? await api("/api/browse/menu");
+    draw(here());
+  } catch (e) { $("#view").innerHTML = `<li class="error">${esc(e.message)}</li>`; }
+}
+function drawCats(list) {
+  const total = Object.values(nav.menu).flat().reduce((n, t) => n + t.count, 0);
+  const inFlat = list.type === "flat";
+  $("#cats").innerHTML = `<li><button data-all aria-current="${inFlat}">All dialogues <span class="count">${total.toLocaleString()}</span></button></li>` +
+    Object.entries(nav.menu).map(([rel, topics]) => {
+      const r = RELATIONS.indexOf(rel), expanded = !inFlat && +list.rel === r;
+      const count = topics.reduce((n, t) => n + t.count, 0);
+      return `<li><button data-open="${r}" aria-expanded="${expanded}">${esc(rel)} <span class="count">${count.toLocaleString()}</span></button>
+        ${expanded ? `<ul class="sub-list">${topics.map((t) => `<li><button data-rel="${r}" data-rname="${esc(rel)}" data-topic="${t.topic}" data-tname="${esc(t.name)}" aria-current="${+list.topic === t.topic}">${esc(t.name)} <span class="count">${t.count.toLocaleString()}</span></button></li>`).join("")}</ul>` : ""}</li>`;
+    }).join("");
+  $("#cats").querySelector("[data-all]").onclick = () => go({ list: { type: "flat", page: 0 }, doc: null });
+  $("#cats").querySelectorAll("[data-open]").forEach((b) => (b.onclick = () => {
+    const r = +b.dataset.open, rel = RELATIONS[r], first = nav.menu[rel][0];
+    go({ list: { type: "events", rel: r, rname: rel, topic: first.topic, tname: first.name }, doc: null });
+  }));
+  $("#cats").querySelectorAll("[data-topic]").forEach((b) => (b.onclick = () =>
+    go({ list: { type: "events", rel: +b.dataset.rel, rname: b.dataset.rname, topic: +b.dataset.topic, tname: b.dataset.tname }, doc: null })));
+}
+function drawRecent() {
+  const el = $("#recent"); if (!el) return;
+  const items = store.get("recent", []);
+  el.innerHTML = items.length ? `<ul class="related">${items.map((r) => `<li><button data-doc="${r.id}">${esc(r.event)}</button></li>`).join("")}</ul>` : `<p class="muted">Nothing yet.</p>`;
+  bindDocs(el);
+}
+function drawCrumbs(list, path) {
+  const parts = [["All dialogues", { list: { type: "flat", page: 0 }, doc: null }]];
+  if (list.type !== "flat") {
+    parts.push([list.rname, null]);
+    parts.push([list.tname, { list: { type: "events", rel: list.rel, rname: list.rname, topic: list.topic, tname: list.tname }, doc: null }]);
+    if (list.type === "dialogues") parts.push([list.ename, { list, doc: null }]);
+  }
+  const trail = path ? [parts[0], ...path.map((p) => [p, null])] : parts;
+  $("#crumbs").innerHTML = trail.map(([label, target], i) => (target && i < trail.length - 1
+    ? `<li><button data-crumb="${i}">${esc(label)}</button></li>`
+    : `<li><span ${i === trail.length - 1 ? 'aria-current="page"' : ""}>${esc(label)}</span></li>`)).join("");
+  $("#crumbs").querySelectorAll("[data-crumb]").forEach((b) => (b.onclick = () => go(trail[+b.dataset.crumb][1])));
+}
+function pagerButtons(prev, next) {
+  $("#pager").innerHTML = `<button id="pp" ${prev ? "" : "disabled"}>Previous page</button><button id="np" ${next ? "" : "disabled"}>Next page</button>`;
+  if (prev) $("#pp").onclick = prev;
+  if (next) $("#np").onclick = next;
+}
+async function drawList(e) {
+  const list = e.list, view = $("#view");
+  $("#list-filters").innerHTML = ""; $("#pager").innerHTML = "";
+  drawCats(list);
+  if (list.type === "flat") {
+    const page = list.page ?? 0, rel = list.relation ?? "", split = list.split ?? "";
+    const d = await api(`/api/browse/flat?page=${page}&relation=${rel}&split=${split}`);
+    $("#list-title").textContent = "Dialogues";
+    $("#list-status").textContent = `Page ${(d.page + 1).toLocaleString()} of ${d.pages.toLocaleString()}, ${d.total.toLocaleString()} dialogues`;
+    $("#list-filters").innerHTML = `<div class="row controls"><label class="muted">Relation <select id="frel"><option value="">All</option>${RELATIONS.map((r, i) => `<option value="${i}" ${String(rel) === String(i) ? "selected" : ""}>${r}</option>`).join("")}</select></label>
+      <label class="muted">Split <select id="fsplit"><option value="">All</option>${SPLITS.map((r, i) => `<option value="${i}" ${String(split) === String(i) ? "selected" : ""}>${r}</option>`).join("")}</select></label></div>`;
+    view.innerHTML = d.documents.map(resultItem).join("");
+    pagerButtons(page > 0 ? () => go({ ...e, list: { ...list, page: page - 1 } }) : null,
+      page + 1 < d.pages ? () => go({ ...e, list: { ...list, page: page + 1 } }) : null);
+    $("#frel").onchange = (x) => go({ ...e, list: { ...list, page: 0, relation: x.target.value } });
+    $("#fsplit").onchange = (x) => go({ ...e, list: { ...list, page: 0, split: x.target.value } });
+  } else if (list.type === "events") {
+    const items = await api(`/api/browse/events?relation=${list.rel}&topic=${list.topic}`);
+    $("#list-title").textContent = "Events";
+    $("#list-status").textContent = `${items.length} events in this topic`;
+    view.innerHTML = items.map((i) => `<li><button class="result" data-event="${i.event}" data-name="${esc(i.name)}"><span class="result-title">${esc(i.name)}</span><span class="tag">${i.count} dialogues</span></button></li>`).join("") || `<li class="empty">No events here.</li>`;
+    view.querySelectorAll("[data-event]").forEach((b) => (b.onclick = () => go({ ...e, doc: null, list: { ...list, type: "dialogues", event: +b.dataset.event, ename: b.dataset.name } })));
+  } else {
+    const items = await api(`/api/browse/dialogues?relation=${list.rel}&topic=${list.topic}&event=${list.event}`);
+    $("#list-title").textContent = "Dialogues";
+    $("#list-status").textContent = `${items.length} dialogues about this event`;
+    view.innerHTML = items.map(resultItem).join("");
+  }
+  bindDocs(view);
+}
+async function drawDoc(e) {
+  const box = $("#preview");
+  if (e.doc == null) { box.innerHTML = `<p class="empty">Choose a dialogue to see its preview.</p>`; drawCrumbs(e.list); return; }
+  box.innerHTML = `<p class="muted">Loading…</p>`;
+  const d = await api(`/api/doc/${e.doc}?q=${encodeURIComponent(e.q ?? "")}`);
+  store.set("recent", [{ id: d.id, event: d.event }, ...store.get("recent", []).filter((r) => r.id !== d.id)].slice(0, 6));
+  drawRecent();
+  drawCrumbs(e.list, d.path);
+  document.querySelectorAll("#view .result").forEach((b) => b.classList.toggle("active", +b.dataset.doc === d.id));
+  const links = Object.entries(d.links).map(([k, list]) => `<h4>${k === "similar" ? "Similar dialogues" : "Same event"}</h4>
+    ${list.length ? `<ul class="related">${list.map((l) => `<li><button data-doc="${l.id}">${esc(l.event)}</button></li>`).join("")}</ul>` : `<p class="muted">No links.</p>`}`).join("");
+  box.innerHTML = `<h3 class="title">${esc(d.event)}</h3><p class="note-pill">${esc(d.relation)} → ${esc(d.tail)}</p>
+    <p class="muted">${esc(d.split)} split · ${d.words} words · about ${d.minutes} min to read</p>
+    <h4>Narrative</h4><blockquote>${d.narrative}</blockquote>
+    <h4>Dialogue</h4>${d.turns.map((t) => `<p class="turn"><b>${t.speaker}:</b> ${t.text}</p>`).join("")}${links}`;
+  bindDocs(box);
+}
+async function draw(e) {
+  try { drawRecent(); await drawList(e); await drawDoc(e); }
+  catch (x) { if ($("#preview")) $("#preview").innerHTML = `<p class="error">${esc(x.message)}</p>`; }   // the user may have left Browse
+}
+
+// ---------- tuning ----------
+async function tuning() {
+  const main = $("#main");
+  main.innerHTML = `<p class="muted">Loading…</p>`;
+  try {
+    const data = await api(`/api/results?size=${state.size ?? ""}&track=all`);
+    let s = data.sweeps, used = data.size;
+    if (!s) for (const size of [...META.sizes].reverse()) {
+      const d = await api(`/api/results?size=${size}&track=all`);
+      if (d.sweeps) { s = d.sweeps; used = size; break; }
+    }
+    if (!s) { main.innerHTML = `<p class="muted">No parameter sweeps saved yet.</p>`; return; }
+    const keys = Object.keys(s.bm25), k1s = [...new Set(keys.map((k) => k.split(",")[0]))], bs = [...new Set(keys.map((k) => k.split(",")[1]))];
+    const vals = Object.values(s.bm25), lo = Math.min(...vals), hi = Math.max(...vals);
+    const bars = (o, label) => barPanels(Object.entries(o).map(([k, v]) => ({ model: k, family: "foundations", v })), [["v", label]]);
+    main.innerHTML = `<p class="muted">Sweeps on ${SIZE(used)} dialogues. The chosen values were then used on the separate test queries: ${esc(JSON.stringify(data.params))}</p>
+    <div class="grid2"><div class="panel"><h3>BM25 MAP across k₁ and b</h3><p class="muted">Rows k₁, columns b. Colour spans ${lo.toFixed(3)} to ${hi.toFixed(3)}, a zoomed range.</p>
+      ${heatmap(k1s.map((k) => "k₁ " + k), bs, (i, j) => (s.bm25[`${k1s[i]},${bs[j]}`] - lo) / (hi - lo || 1), (r, c, v) => `${r}, b ${c}: MAP ${(lo + v * (hi - lo)).toFixed(3)}`, { cell: 44, left: 60, top: 22, colLabels: true, max: 340, label: "BM25 MAP grid" })}</div>
+    <div class="panel"><h3>Proximal nodes: λ</h3><div class="scroll">${bars(s.proximal_lambda, "MAP")}</div></div>
+    <div class="panel"><h3>Field BM25: field weights</h3><div class="scroll">${bars(s.field_weights, "MAP")}</div></div>
+    <div class="panel"><h3>LSI: concepts k</h3><p class="muted">The test results on this page used k = ${data.params.k}.</p><div class="scroll">${bars(s.lsi_k, "MAP")}</div></div></div>`;
+  } catch (e) { main.innerHTML = `<p class="error">${esc(e.message)}</p>`; }
+}
+
+// ---------- math & code ----------
+async function math() {
+  const all = [...META.models, ...META.others];
+  $("#main").innerHTML = `<div class="row controls"><select id="m" aria-label="Model">${all.map((m) => `<option ${m.name === state.model ? "selected" : ""}>${esc(m.name)}</option>`).join("")}</select></div><div id="out"></div>`;
+  const load = async () => {
+    const out = $("#out");
+    try {
+      const d = await api(`/api/source?model=${encodeURIComponent($("#m").value)}`);
+      out.innerHTML = `<div class="panel"><h2>${esc(d.model)}</h2><p>${esc(d.idea)}</p><p class="muted">${esc(d.slides)}</p>${d.formula.map((f) => `<div class="formula">${tex(f)}</div>`).join("")}</div>
+        ${d.code.map((c) => `<h3>${esc(c.symbol)} <span class="muted">${esc(c.file)}, line ${c.line}</span></h3><pre>${esc(c.code)}</pre>`).join("")}`;
+    } catch (e) { out.innerHTML = `<p class="error">${esc(e.message)}</p>`; }
+  };
+  $("#m").onchange = load; load();
+}
+
+const PAGES = { compare, search, flow, browse, tuning, math };
+(async () => {
+  try {
+    META = await api("/api/meta");
+    state.size = META.size;
+    $("#status").textContent = `${META.documents.toLocaleString()} real dialogues from SODA · ${META.models.length} retrieval models · ${META.terms.toLocaleString()} index terms`;
+    $("#samples").innerHTML = META.samples.map((s) => `<option value="${esc(s)}">`).join("");
+    $("#model").innerHTML = META.models.map((m) => `<option>${esc(m.name)}</option>`).join("");
+    $("#size").innerHTML = META.sizes.map((s) => `<option value="${s}">${SIZE(s)} dialogues</option>`).join("");
+    $("#size").value = META.size;
+    const link = new URLSearchParams(location.search);          // a link can open a page directly
+    state.query = link.get("q") ?? "";
+    state.model = link.get("model") ?? state.model;
+    state.tab = PAGES[location.hash.slice(1)] ? location.hash.slice(1) : "compare";
+    $("#q").value = state.query;
+    open(state.tab);
+  } catch (e) { $("#status").textContent = e.message; }
+})();
+</script>
+</body>
+</html>

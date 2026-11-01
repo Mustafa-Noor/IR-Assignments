@@ -52,7 +52,7 @@ The best possible P@5 here is 0.733, because several queries have fewer than 5 r
 4. **Classification and clustering both reach 87.5% (35/40).** The mistakes are informative:
    - Naive Bayes files D03 (federated skin-lesion segmentation) under Computer Vision and D37 (biomedical image
      explanations) under Healthcare AI. Both papers really sit on the border between the two.
-   - K-Means merges one healthcare paper into the segmentation cluster for the same reason.
+   - K-Means merges two healthcare papers into the segmentation cluster for the same reason.
 
 ## What doesn't work
 
