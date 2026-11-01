@@ -338,6 +338,44 @@
     border-radius: var(--radius); background: var(--soft-sky); max-width: none;
   }
 
+  /* Model comparison */
+  .verdict {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 16px 18px; margin: 0 0 18px; border-radius: var(--radius);
+    background: linear-gradient(135deg, var(--soft), var(--soft-sky));
+    border: 1px solid var(--line); box-shadow: var(--shadow);
+  }
+  .verdict .trophy { font-size: 1.6rem; line-height: 1; flex: none; }
+  .verdict h3 { margin: 0 0 4px; font-size: 1.1rem; color: var(--accent-text); }
+  .verdict p { margin: 0; font-size: 14px; color: var(--muted); }
+  .cmp-table { width: 100%; border-collapse: collapse; font-size: 15px; margin: 0 0 16px; }
+  .cmp-table caption {
+    text-align: left; font-size: 12.5px; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--muted); margin-bottom: 10px;
+  }
+  .cmp-table th, .cmp-table td {
+    padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--line);
+  }
+  .cmp-table thead th { color: var(--muted); font-size: 13px; font-weight: 700; }
+  .cmp-table tbody th { font-weight: 400; color: var(--ink); white-space: nowrap; }
+  .cmp-table td { text-align: center; font-variant-numeric: tabular-nums; }
+  .cmp-table col.win, .cmp-table th.win, .cmp-table td.win {
+    background: var(--soft);
+  }
+  .cmp-table .model-head { font-weight: 700; color: var(--ink); text-align: center; }
+  .cmp-table .model-head small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+  .cmp-table .badge {
+    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; background: var(--p-teal); color: #fff;
+    border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: middle;
+  }
+  .cmp-table td.lead { color: var(--accent-text); font-weight: 700; }
+  .cmp-note { font-size: 13px; color: var(--muted); margin: 0 0 8px; }
+  .cmp-lists { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 8px; }
+  .cmp-lists h4 { margin: 0 0 8px; font-size: 14px; color: var(--muted); }
+  .cmp-lists ol { margin: 0; padding-left: 20px; font-size: 14px; }
+  @media (max-width: 720px) { .cmp-lists { grid-template-columns: 1fr; } }
+
   aside::-webkit-scrollbar, .preview::-webkit-scrollbar { width: 8px; }
   aside::-webkit-scrollbar-thumb, .preview::-webkit-scrollbar-thumb { background: var(--p-sky); border-radius: 4px; }
 
@@ -387,6 +425,7 @@
         <option value="vector">Relevance</option>
         <option value="fuzzy">Fuzzy relevance</option>
         <option value="boolean">Boolean (AND, OR, NOT)</option>
+        <option value="compare">Compare Boolean vs Fuzzy</option>
       </select>
     </label>
     <label>Difficulty
@@ -437,6 +476,7 @@ const MODE_HINTS = {
   vector: "Relevance ranks scenarios by how closely they match your words.",
   fuzzy: "Fuzzy relevance allows partial matches and supports fuzzy AND, OR and NOT.",
   boolean: "Use AND, OR, NOT and brackets in capitals, for example: (friend OR neighbour) AND cafe",
+  compare: "Runs one query through both models and reports which is best (accuracy, speed, efficiency).",
 };
 
 let catData = [];
@@ -521,7 +561,76 @@ function renderCrumbs() {
   ).join("");
 }
 
+const fmt = (n) => Number(n).toFixed(3);
+
+function metricRow(label, key, models, { higher = true, int = false } = {}) {
+  const vals = models.map((m) => m[key]);
+  const best = higher ? Math.max(...vals) : Math.min(...vals);
+  const cells = models.map((m) => {
+    const lead = m[key] === best && vals[0] !== vals[1] ? " lead" : "";
+    const win = m.best ? " win" : "";
+    const shown = int ? m[key] : fmt(m[key]);
+    return `<td class="${win}${lead}">${shown}</td>`;
+  }).join("");
+  return `<tr><th>${label}</th>${cells}</tr>`;
+}
+
+async function renderComparison() {
+  const params = new URLSearchParams({
+    q: state.q, category: state.category,
+    subcategory: state.subcategory, difficulty: state.difficulty,
+  });
+  els.status.textContent = "Comparing models...";
+  if (!state.q.trim()) {
+    els.status.textContent = "";
+    els.results.innerHTML = `<li class="empty">Type a query, then press Search to compare the Boolean and Fuzzy models.</li>`;
+    return;
+  }
+  const res = await fetch(`/api/compare?${params}`);
+  const data = await res.json();
+  if (!res.ok) {
+    els.results.innerHTML = "";
+    els.status.textContent = data.error;
+    return;
+  }
+  const m = data.models;
+  els.status.textContent = `${data.relevant_count} of ${data.collection_size} scenarios treated as relevant`;
+  const head = m.map((x) =>
+    `<th class="model-head ${x.best ? "win" : ""}">${esc(x.name)}${x.best ? '<span class="badge">Best</span>' : ""}<small>${esc(x.description)}</small></th>`
+  ).join("");
+  const lists = m.map((x) => `
+    <div>
+      <h4>${esc(x.name)} returned ${x.count}</h4>
+      <ol>${x.results.length
+        ? x.results.map((r) => `<li>${esc(r.title)}${r.score !== null ? ` (${fmt(r.score)})` : ""}</li>`).join("")
+        : "<li class=\"empty\">No scenarios.</li>"}</ol>
+    </div>`).join("");
+  els.results.innerHTML = `<li>
+    <div class="verdict">
+      <span class="trophy" aria-hidden="true">&#127942;</span>
+      <div><h3>${esc(m.find((x) => x.best).name)} wins</h3><p>${esc(data.verdict)}</p></div>
+    </div>
+    <p class="cmp-note">Relevance reference: ${esc(data.relevant_basis)}. Speed averaged over ${data.runs} runs.</p>
+    <table class="cmp-table">
+      <caption>One query, both models</caption>
+      <thead><tr><th scope="col">Metric</th>${head}</tr></thead>
+      <tbody>
+        ${metricRow("Accuracy", "accuracy", m)}
+        ${metricRow("Precision", "precision", m)}
+        ${metricRow("Recall", "recall", m)}
+        ${metricRow("F1 score", "f1", m)}
+        ${metricRow("Speed (ms, lower is better)", "time_ms", m, { higher: false })}
+        ${metricRow("Efficiency (F1 / ms)", "efficiency", m)}
+        ${metricRow("Results returned", "count", m, { int: true })}
+        ${metricRow("Overall score", "overall", m)}
+      </tbody>
+    </table>
+    <div class="cmp-lists">${lists}</div>
+  </li>`;
+}
+
 async function renderResults() {
+  if (state.mode === "compare") return renderComparison();
   const params = new URLSearchParams({
     q: state.q, mode: state.mode, category: state.category,
     subcategory: state.subcategory, difficulty: state.difficulty,
@@ -550,6 +659,11 @@ async function renderResults() {
 }
 
 async function renderPreview() {
+  if (state.mode === "compare") {
+    currentTitle = "";
+    els.preview.innerHTML = `<p class="empty">The comparison report is shown on the left. Switch the search type back to Relevance, Fuzzy or Boolean to preview individual scenarios.</p>`;
+    return;
+  }
   if (!state.scenarioId) {
     currentTitle = "";
     els.preview.innerHTML = `<p class="empty">Choose a scenario to see its preview.</p>`;

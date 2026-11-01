@@ -7,6 +7,7 @@ Scenario content is a draft until reviewed by a clinician.
 import json
 import math
 import re
+import time
 from collections import Counter, defaultdict
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -262,6 +263,231 @@ class SearchIndex:
         results.sort(key=lambda r: (-(r["score"] or 0), r["title"]))
         return results
 
+    # ---- Model comparison ---------------------------------------------------
+    def _filter_ids(self, ids, category, subcategory, difficulty):
+        """Keep only the ids that pass the active category/difficulty filters."""
+        kept = set()
+        for sid in ids:
+            s = self.scenarios[sid]
+            if category and s["category"] != category:
+                continue
+            if subcategory and s["subcategory"] != subcategory:
+                continue
+            if difficulty and s["difficulty"] != difficulty:
+                continue
+            kept.add(sid)
+        return kept
+
+    def _normalize_query(self, query):
+        """Insert implicit ANDs so a plain multi-word query parses for both.
+
+        The Fuzzy parser already treats adjacent terms as AND; the Boolean
+        parser requires the operator spelled out. Making the implicit ANDs
+        explicit lets both models answer the same plain query (e.g. "family
+        gathering" -> "family AND gathering") and does not change Fuzzy's
+        result, so the comparison stays fair.
+        """
+        tokens = QUERY_TOKEN_RE.findall(query)
+
+        def ends_operand(t):
+            return t == ")" or t not in {"(", "AND", "OR", "NOT"}
+
+        def starts_operand(t):
+            return t == "(" or t == "NOT" or t not in {")", "AND", "OR"}
+
+        out = []
+        for tok in tokens:
+            if out and ends_operand(out[-1]) and starts_operand(tok):
+                out.append("AND")
+            out.append(tok)
+        return " ".join(out)
+
+    def _correct_term(self, term):
+        """Map a query word to its closest corpus word (fixes typos)."""
+        if term in self.idf:
+            return term
+        best, best_ratio = term, 0.0
+        for vocab in self.df:
+            ratio = SequenceMatcher(None, term, vocab).ratio()
+            if ratio > best_ratio:
+                best, best_ratio = vocab, ratio
+        return best if best_ratio >= 0.7 else term
+
+    def relevant_set(self, query, universe):
+        """A graded 'gold' relevance set used to score both models.
+
+        There are no human relevance judgements for this small corpus, so we
+        build the reference from the query's *intent*: strip the Boolean
+        operators, spell-correct each content word to its nearest corpus word,
+        then rank documents by TF-IDF cosine on that corrected query. A
+        scenario is 'relevant' when its score reaches 30% of the best score.
+        Correcting the terms means the reference captures what the searcher
+        meant even when they mistype, so neither model's mechanism defines it.
+        """
+        terms = [t for t in tokenize(query) if t != "not"]
+        corrected = Counter(self._correct_term(t) for t in terms)
+        q_vec = self._vectorize(corrected)
+        if not q_vec:
+            return set()
+        scores = {}
+        for sid in universe:
+            d_vec = self.vectors[sid]
+            score = sum(w * d_vec.get(t, 0.0) for t, w in q_vec.items())
+            if score > 0:
+                scores[sid] = score
+        if not scores:
+            return set()
+        cutoff = 0.3 * max(scores.values())
+        return {sid for sid, sc in scores.items() if sc >= cutoff}
+
+    @staticmethod
+    def _prf(retrieved, relevant, universe_size):
+        """Precision, recall, F1 and accuracy for one retrieved set."""
+        tp = len(retrieved & relevant)
+        fp = len(retrieved - relevant)
+        fn = len(relevant - retrieved)
+        tn = universe_size - tp - fp - fn
+        precision = tp / (tp + fp) if (tp + fp) else 0.0
+        recall = tp / (tp + fn) if (tp + fn) else 0.0
+        f1 = (2 * precision * recall / (precision + recall)
+              if (precision + recall) else 0.0)
+        accuracy = (tp + tn) / universe_size if universe_size else 0.0
+        return {
+            "true_positives": tp,
+            "false_positives": fp,
+            "false_negatives": fn,
+            "true_negatives": tn,
+            "precision": round(precision, 4),
+            "recall": round(recall, 4),
+            "f1": round(f1, 4),
+            "accuracy": round(accuracy, 4),
+        }
+
+    def _time_retrieval(self, fn, max_runs, budget=0.15):
+        """Average time (ms) of a retrieval call, and the run count used.
+
+        Runs the call repeatedly for a stable average but caps the total work
+        at `budget` seconds so a slow model does not stall the request: one
+        warm-up call estimates the per-call cost, then the number of timed runs
+        is chosen to fit the budget (at least 3, at most `max_runs`).
+        """
+        t0 = time.perf_counter()
+        fn()
+        single = time.perf_counter() - t0
+        if single > 0:
+            runs = min(max_runs, max(3, int(budget / single)))
+        else:
+            runs = max_runs
+        start = time.perf_counter()
+        for _ in range(runs):
+            fn()
+        elapsed = time.perf_counter() - start
+        return (elapsed / runs) * 1000.0, runs
+
+    def compare(self, query, category="", subcategory="", difficulty="", runs=50):
+        """Answer one query with both the Boolean and Fuzzy models and compare.
+
+        Returns per-model retrieval quality (precision/recall/F1/accuracy),
+        speed, an efficiency figure (quality per millisecond) and an overall
+        verdict naming the best model for this query.
+        """
+        # Make implicit ANDs explicit so both models accept a plain query.
+        nquery = self._normalize_query(query)
+
+        universe = self._filter_ids(
+            self.all_ids, category, subcategory, difficulty)
+        universe_size = len(universe)
+        relevant = self.relevant_set(nquery, universe)
+
+        # Retrieved sets (respecting the active filters).
+        bool_ids = self._filter_ids(
+            self.boolean_search(nquery), category, subcategory, difficulty)
+        fuzzy_raw = self.fuzzy_scores(nquery)
+        fuzzy_ids = self._filter_ids(
+            set(fuzzy_raw), category, subcategory, difficulty)
+
+        # Timing of the core retrieval step, averaged over several runs.
+        bool_ms, bool_runs = self._time_retrieval(
+            lambda: self.boolean_search(nquery), runs)
+        fuzzy_ms, fuzzy_runs = self._time_retrieval(
+            lambda: self.fuzzy_scores(nquery), runs)
+
+        def preview(ids, scores=None):
+            items = []
+            for sid in ids:
+                items.append({
+                    "id": sid,
+                    "title": self.scenarios[sid]["title"],
+                    "score": round(scores[sid], 4) if scores else None,
+                })
+            items.sort(key=lambda r: (-(r["score"] or 0), r["title"]))
+            return items
+
+        models = [
+            {
+                "key": "boolean",
+                "name": "Boolean",
+                "description": "Exact term match with AND / OR / NOT set logic.",
+                "time_ms": round(bool_ms, 4),
+                "runs": bool_runs,
+                "count": len(bool_ids),
+                "results": preview(bool_ids),
+                **self._prf(bool_ids, relevant, universe_size),
+            },
+            {
+                "key": "fuzzy",
+                "name": "Fuzzy",
+                "description": "Partial / approximate matching with fuzzy AND, OR, NOT.",
+                "time_ms": round(fuzzy_ms, 4),
+                "runs": fuzzy_runs,
+                "count": len(fuzzy_ids),
+                "results": preview(fuzzy_ids, fuzzy_raw),
+                **self._prf(fuzzy_ids, relevant, universe_size),
+            },
+        ]
+
+        # Normalise F1 (quality) and speed across the two models, then combine.
+        best_f1 = max(m["f1"] for m in models) or 1.0
+        best_ms = min(m["time_ms"] for m in models) or 1e-9
+        for m in models:
+            f1_norm = m["f1"] / best_f1 if best_f1 else 0.0
+            speed_norm = best_ms / m["time_ms"] if m["time_ms"] else 1.0
+            # Quality per millisecond: how much F1 each model buys per unit time.
+            m["efficiency"] = round(m["f1"] / m["time_ms"], 4) if m["time_ms"] else 0.0
+            m["overall"] = round(0.6 * f1_norm + 0.4 * speed_norm, 4)
+
+        winner = max(models, key=lambda m: (m["overall"], m["f1"], -m["time_ms"]))
+        loser = next(m for m in models if m["key"] != winner["key"])
+        for m in models:
+            m["best"] = m["key"] == winner["key"]
+
+        reasons = []
+        if winner["f1"] > loser["f1"]:
+            reasons.append(
+                f"higher F1 ({winner['f1']} vs {loser['f1']})")
+        elif winner["f1"] == loser["f1"]:
+            reasons.append(f"matching F1 ({winner['f1']})")
+        if winner["time_ms"] < loser["time_ms"]:
+            reasons.append(
+                f"faster ({winner['time_ms']} ms vs {loser['time_ms']} ms)")
+        verdict = (
+            f"{winner['name']} is the better model for this query - "
+            + " and ".join(reasons) + "."
+            if reasons else
+            f"{winner['name']} is the better model for this query."
+        )
+
+        return {
+            "query": query,
+            "collection_size": universe_size,
+            "relevant_count": len(relevant),
+            "relevant_basis": "spell-corrected TF-IDF score >= 30% of the top score",
+            "runs": max(bool_runs, fuzzy_runs),
+            "winner": winner["key"],
+            "verdict": verdict,
+            "models": models,
+        }
+
 
 index = SearchIndex(load_scenarios())
 
@@ -315,6 +541,30 @@ def search():
         "count": len(results),
         "results": results,
     })
+
+
+@app.get("/api/compare")
+def compare():
+    query = request.args.get("q", "")
+    if not query.strip():
+        return jsonify({
+            "error": "Enter a query to compare the Boolean and Fuzzy models.",
+        }), 400
+    try:
+        report = index.compare(
+            query,
+            category=request.args.get("category", ""),
+            subcategory=request.args.get("subcategory", ""),
+            difficulty=request.args.get("difficulty", ""),
+        )
+    except ValueError as exc:
+        return jsonify({
+            "error": (
+                f"Could not read the search: {exc}. Use AND, OR, NOT and "
+                "parentheses in capitals, for example: (friend OR neighbour) AND cafe"
+            ),
+        }), 400
+    return jsonify(report)
 
 
 @app.get("/api/scenarios/<sid>")
