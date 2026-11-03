@@ -739,12 +739,13 @@ const PAGES = { compare, search, flow, browse, tuning, math };
 (async () => {
   try {
     META = await api("/api/meta");
-    state.size = META.size;
-    $("#status").textContent = `${META.documents.toLocaleString()} real dialogues from SODA · ${META.models.length} retrieval models · ${META.terms.toLocaleString()} index terms`;
+    state.size = META.sizes[META.sizes.length - 1];      // Compare opens on the largest scored collection
+    const scored = state.size === META.size ? "" : ` · scores for ${SIZE(state.size)}`;
+    $("#status").textContent = `${META.documents.toLocaleString()} real SODA dialogues searchable live${scored} · ${META.models.length} retrieval models`;
     $("#samples").innerHTML = META.samples.map((s) => `<option value="${esc(s)}">`).join("");
     $("#model").innerHTML = META.models.map((m) => `<option>${esc(m.name)}</option>`).join("");
     $("#size").innerHTML = META.sizes.map((s) => `<option value="${s}">${SIZE(s)} dialogues</option>`).join("");
-    $("#size").value = META.size;
+    $("#size").value = state.size;
     const link = new URLSearchParams(location.search);          // a link can open a page directly
     state.query = link.get("q") ?? "";
     state.model = link.get("model") ?? state.model;

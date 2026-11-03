@@ -2,7 +2,9 @@
 
     python -m combined.server            then open http://127.0.0.1:5000
 
-Uses the largest collection that has saved results. Models load the first time they are needed.
+The Compare page shows the largest collection with saved results. Live pages (Search, Model flow, Browse) use the
+largest one below the full set, because the full set is too slow to search live on a laptop; set IR_SIZE=full to
+use it anyway. Models load the first time they are needed.
 """
 import ast
 import csv
@@ -93,7 +95,8 @@ def get_world():
         sizes = available_sizes()
         if not sizes:
             abort(503, "No results yet. Run python -m combined.evaluate first.")
-        world = World(os.environ.get("IR_SIZE", sizes[-1]))
+        live = [s for s in sizes if s != "full"] or sizes
+        world = World(os.environ.get("IR_SIZE", live[-1]))
     return world
 
 

@@ -104,6 +104,7 @@ def yield_to_the_user():
         kernel32.GetCurrentProcess.restype = ctypes.c_void_p
         kernel32.SetPriorityClass.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
         kernel32.SetPriorityClass(kernel32.GetCurrentProcess(), 0x00004000)     # BELOW_NORMAL_PRIORITY_CLASS
+        kernel32.SetThreadExecutionState(0x80000000 | 0x00000001)    # keep the PC awake until this process ends
 
 
 def score_model(model, queries, gaps, N, context):

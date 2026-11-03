@@ -48,8 +48,10 @@ now in `browsing/`. Their Week 6 models are in `setmodels/` and their Week 7 mod
 The app has six pages: Compare, Search, Model flow, Browse, Tuning, and Math & code, which shows each formula beside the
 function that runs it. Saved results in `combined/results/` load without any rebuild, but Search, Flow and Browse need the index.
 
-Scores come from 200,010 dialogues. The full index builds in a few minutes, but scoring it takes hours: use
-`python -m combined.evaluate full 200000` on a free machine. It needs about 9 GB of disk.
+Scores cover all 1,486,896 dialogues, plus 10,005 and 200,010 subsets for comparison. To rebuild the full set, run
+`python -m combined.collection full`, then `python -m combined.evaluate full 200000` (about an hour or two, and about 9 GB of
+disk). Live Search, Model flow and Browse use the 200,010 collection, because searching the full set live is too slow on
+a laptop; set `IR_SIZE=full` to use it anyway.
 
 Later weeks import earlier ones, the same way the course builds up. For example, Week 4's BM25 uses Week 1's
 inverted index, and Week 5 wraps every week's model.
